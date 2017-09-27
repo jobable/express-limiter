@@ -1,14 +1,21 @@
 module.exports = function (app, db) {
   var dbError = false
+  var dbConnected = false
   db.on('error', function (err) {
     dbError = true
+    dbConnected = true
   })
   db.on('connect', function () {
     dbError = false
+    dbConnected = true
+  })
+  db.on('reconnecting', function() {
+    dbError = false
+    dbConnected = false
   })
   return function (opts) {
     var middleware = function (req, res, next) {
-      if(dbError === true) return next()
+      if(!dbConnected || dbError) return next()
       if (opts.whitelist && opts.whitelist(req)) return next()
       opts.lookup = Array.isArray(opts.lookup) ? opts.lookup : [opts.lookup]
       opts.onRateLimited = typeof opts.onRateLimited === 'function' ? opts.onRateLimited : function (req, res, next) {
